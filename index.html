@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>跨年烟花倒计时</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.04), transparent 25%),
+            radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.04), transparent 30%),
+            radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.03), transparent 25%),
+            #040611;
+      --glow: 0 0 16px rgba(255, 255, 255, 0.45), 0 0 64px rgba(255, 255, 255, 0.28);
+      --accent: #ffe088;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft Yahei", system-ui, sans-serif;
+      background: var(--bg);
+      color: #f7f7fb;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 1;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .count-text {
+      font-size: clamp(56px, 12vw, 180px);
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-shadow: var(--glow);
+      mix-blend-mode: screen;
+      filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.35));
+      padding: 0.2em 0.4em;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.0));
+      backdrop-filter: blur(4px);
+      transition: transform 320ms ease, opacity 320ms ease;
+    }
+
+    .count-text.animate {
+      transform: scale(1.08);
+      opacity: 1;
+    }
+
+    .count-text.fade {
+      opacity: 0.3;
+      transform: scale(0.96);
+    }
+
+    .hint {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 16px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      font-size: 14px;
+      color: #d7def5;
+      backdrop-filter: blur(6px);
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hint button {
+      pointer-events: auto;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: linear-gradient(120deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+      color: #f2f3ff;
+      transition: all 180ms ease;
+      font-size: 13px;
+    }
+
+    .hint button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+      border-color: rgba(255, 255, 255, 0.32);
+    }
+
+    audio {
+      height: 32px;
+      filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fireworks"></canvas>
+  <div class="overlay">
+    <div id="count" class="count-text">10</div>
+  </div>
+  <div class="hint">
+    <span>提示：点击“播放音乐”进入跨年模式，音乐为曲肖冰《谁》高潮部分。</span>
+    <button id="music-toggle">播放音乐</button>
+    <audio id="bgm" preload="auto" loop src="assets/music/que-xiaobing-shei-chorus.mp3"></audio>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('fireworks');
+    const ctx = canvas.getContext('2d');
+    const countEl = document.getElementById('count');
+    const music = document.getElementById('bgm');
+    const musicToggle = document.getElementById('music-toggle');
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+
+    const fireworks = [];
+    const sparks = [];
+
+    const palette = [
+      '#ff6b6b', '#ffd166', '#7af5d3', '#8ec5ff', '#f5a2ff', '#ff9b9b', '#f8f9fa'
+    ];
+
+    class Particle {
+      constructor(x, y, angle, speed, size, color, life = 1200) {
+        this.x = x;
+        this.y = y;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.size = size;
+        this.color = color;
+        this.life = life;
+        this.created = performance.now();
+        this.alpha = 1;
+        this.gravity = 0.00035;
+      }
+
+      update(delta) {
+        this.vy += this.gravity * delta;
+        this.x += this.vx * delta * 0.06;
+        this.y += this.vy * delta * 0.06;
+        const age = performance.now() - this.created;
+        this.alpha = Math.max(0, 1 - age / this.life);
+        return this.alpha > 0;
+      }
+
+      draw() {
+        ctx.globalAlpha = this.alpha;
+        ctx.beginPath();
+        ctx.fillStyle = this.color;
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function spawnFirework(x, y, power = 14, count = 80, color) {
+      const hueColor = color || palette[Math.floor(Math.random() * palette.length)];
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.15);
+        const speed = power * (0.6 + Math.random() * 0.7);
+        const size = 1 + Math.random() * 2.2;
+        sparks.push(new Particle(x, y, angle, speed, size, hueColor));
+      }
+    }
+
+    function spawnComet() {
+      const startX = Math.random() * width;
+      const startY = height + 20;
+      const targetX = Math.random() * width;
+      const targetY = height * 0.2 + Math.random() * height * 0.3;
+      const comet = { x: startX, y: startY, tx: targetX, ty: targetY, age: 0, ttl: 900 + Math.random() * 600 };
+      fireworks.push(comet);
+    }
+
+    function renderComets(delta) {
+      for (let i = fireworks.length - 1; i >= 0; i--) {
+        const f = fireworks[i];
+        f.age += delta;
+        const t = Math.min(1, f.age / f.ttl);
+        f.x = f.x + (f.tx - f.x) * t * 0.04;
+        f.y = f.y + (f.ty - f.y) * t * 0.04;
+
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = '#fffaf0';
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffd166';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        ctx.lineTo(f.x - 10, f.y + 24);
+        ctx.stroke();
+
+        if (t >= 1) {
+          spawnFirework(f.x, f.y, 14 + Math.random() * 8, 70 + Math.random() * 30);
+          fireworks.splice(i, 1);
+        }
+      }
+    }
+
+    function renderSparks(delta) {
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const p = sparks[i];
+        if (!p.update(delta)) {
+          sparks.splice(i, 1);
+          continue;
+        }
+        p.draw();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    let lastTime = performance.now();
+    function loop(now) {
+      const delta = now - lastTime;
+      lastTime = now;
+      ctx.fillStyle = 'rgba(4, 6, 17, 0.26)';
+      ctx.fillRect(0, 0, width, height);
+
+      if (Math.random() < 0.02) spawnComet();
+      renderComets(delta);
+      renderSparks(delta);
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('resize', () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    });
+
+    // Countdown logic
+    const sequence = ['10','9','8','7','6','5','4','3','2','1','0','2026','新年快乐'];
+    let idx = 0;
+
+    function triggerBurst(strength = 1.4) {
+      const baseCount = 120 * strength;
+      const angles = Math.floor(6 * strength);
+      for (let i = 0; i < angles; i++) {
+        spawnFirework(width / 2, height / 2, 16 * strength, baseCount, palette[i % palette.length]);
+      }
+    }
+
+    function updateCount() {
+      const value = sequence[idx];
+      countEl.textContent = value;
+      countEl.classList.remove('fade');
+      countEl.classList.add('animate');
+      setTimeout(() => countEl.classList.remove('animate'), 260);
+
+      if (value === '2026' || value === '新年快乐') {
+        triggerBurst(1.8);
+      } else {
+        triggerBurst(1.1);
+      }
+
+      idx++;
+      if (idx < sequence.length) {
+        setTimeout(() => {
+          countEl.classList.add('fade');
+          setTimeout(updateCount, 800);
+        }, 700);
+      }
+    }
+
+    // Music control
+    musicToggle.addEventListener('click', async () => {
+      try {
+        if (music.paused) {
+          await music.play();
+          musicToggle.textContent = '暂停音乐';
+        } else {
+          music.pause();
+          musicToggle.textContent = '播放音乐';
+        }
+      } catch (err) {
+        console.warn('音乐播放被阻止：', err);
+      }
+    });
+
+    // Init
+    requestAnimationFrame(loop);
+    setTimeout(updateCount, 500);
+  </script>
+</body>
+</html>
