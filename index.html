@@ -31,40 +31,6 @@
       z-index: 0;
     }
 
-    .overlay {
-      position: fixed;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      z-index: 1;
-      text-align: center;
-      pointer-events: none;
-    }
-
-    .count-text {
-      font-size: clamp(56px, 12vw, 180px);
-      font-weight: 900;
-      letter-spacing: 0.08em;
-      text-shadow: var(--glow);
-      mix-blend-mode: screen;
-      filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.35));
-      padding: 0.2em 0.4em;
-      border-radius: 18px;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.0));
-      backdrop-filter: blur(4px);
-      transition: transform 320ms ease, opacity 320ms ease;
-    }
-
-    .count-text.animate {
-      transform: scale(1.08);
-      opacity: 1;
-    }
-
-    .count-text.fade {
-      opacity: 0.3;
-      transform: scale(0.96);
-    }
-
     .hint {
       position: fixed;
       bottom: 18px;
@@ -109,9 +75,6 @@
 </head>
 <body>
   <canvas id="fireworks"></canvas>
-  <div class="overlay">
-    <div id="count" class="count-text">10</div>
-  </div>
   <div class="hint">
     <span>提示：点击“播放音乐”进入跨年模式，音乐为曲肖冰《谁》高潮部分。</span>
     <button id="music-toggle">播放音乐</button>
@@ -121,7 +84,6 @@
   <script>
     const canvas = document.getElementById('fireworks');
     const ctx = canvas.getContext('2d');
-    const countEl = document.getElementById('count');
     const music = document.getElementById('bgm');
     const musicToggle = document.getElementById('music-toggle');
 
@@ -132,6 +94,9 @@
 
     const fireworks = [];
     const sparks = [];
+    const textParticles = [];
+    const textCanvas = document.createElement('canvas');
+    const textCtx = textCanvas.getContext('2d');
 
     const palette = [
       '#ff6b6b', '#ffd166', '#7af5d3', '#8ec5ff', '#f5a2ff', '#ff9b9b', '#f8f9fa'
@@ -228,12 +193,88 @@
       ctx.globalAlpha = 1;
     }
 
+    // Text particle system
+    function buildTextTargets(text) {
+      textCanvas.width = Math.min(900, width * 0.82);
+      textCanvas.height = Math.min(280, height * 0.38);
+      textCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+      const fontSize = Math.floor(textCanvas.height * 0.7);
+      textCtx.font = `bold ${fontSize}px "Segoe UI", "PingFang SC", sans-serif`;
+      textCtx.textAlign = 'center';
+      textCtx.textBaseline = 'middle';
+      textCtx.fillStyle = '#ffffff';
+      textCtx.fillText(text, textCanvas.width / 2, textCanvas.height / 2);
+
+      const step = Math.max(4, Math.floor(textCanvas.width / 140));
+      const { data } = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height);
+      const points = [];
+      for (let y = 0; y < textCanvas.height; y += step) {
+        for (let x = 0; x < textCanvas.width; x += step) {
+          const alpha = data[(y * textCanvas.width + x) * 4 + 3];
+          if (alpha > 128) {
+            points.push({
+              tx: (width - textCanvas.width) / 2 + x,
+              ty: (height - textCanvas.height) / 2 + y,
+            });
+          }
+        }
+      }
+      return points;
+    }
+
+    function setTextParticles(text) {
+      const targets = buildTextTargets(text);
+      textParticles.length = targets.length;
+      for (let i = 0; i < targets.length; i++) {
+        const target = targets[i];
+        if (!textParticles[i]) {
+          textParticles[i] = {
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: 0,
+            vy: 0,
+            alpha: 0,
+            size: 1 + Math.random() * 1.4,
+            hue: palette[i % palette.length],
+          };
+        }
+        textParticles[i].tx = target.tx;
+        textParticles[i].ty = target.ty;
+      }
+    }
+
+    function renderText(delta) {
+      const spring = 0.012 * delta;
+      const damping = 0.9;
+      for (let i = 0; i < textParticles.length; i++) {
+        const p = textParticles[i];
+        const dx = p.tx - p.x;
+        const dy = p.ty - p.y;
+        p.vx += dx * spring;
+        p.vy += dy * spring;
+        p.vx *= damping;
+        p.vy *= damping;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha = Math.min(1, p.alpha + delta * 0.0025);
+
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.hue;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size + Math.sin(performance.now() * 0.008 + i) * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     let lastTime = performance.now();
     function loop(now) {
       const delta = now - lastTime;
       lastTime = now;
       ctx.fillStyle = 'rgba(4, 6, 17, 0.26)';
       ctx.fillRect(0, 0, width, height);
+
+      renderText(delta);
 
       if (Math.random() < 0.02) spawnComet();
       renderComets(delta);
@@ -246,10 +287,14 @@
       height = window.innerHeight;
       canvas.width = width;
       canvas.height = height;
+      if (textParticles.length) {
+        setTextParticles(currentText);
+      }
     });
 
     // Countdown logic
     const sequence = ['10','9','8','7','6','5','4','3','2','1','0','2026','新年快乐'];
+    let currentText = sequence[0];
     let idx = 0;
 
     function triggerBurst(strength = 1.4) {
@@ -262,10 +307,8 @@
 
     function updateCount() {
       const value = sequence[idx];
-      countEl.textContent = value;
-      countEl.classList.remove('fade');
-      countEl.classList.add('animate');
-      setTimeout(() => countEl.classList.remove('animate'), 260);
+      setTextParticles(value);
+      currentText = value;
 
       if (value === '2026' || value === '新年快乐') {
         triggerBurst(1.8);
@@ -275,10 +318,7 @@
 
       idx++;
       if (idx < sequence.length) {
-        setTimeout(() => {
-          countEl.classList.add('fade');
-          setTimeout(updateCount, 800);
-        }, 700);
+        setTimeout(updateCount, 1100);
       }
     }
 
@@ -299,7 +339,8 @@
 
     // Init
     requestAnimationFrame(loop);
-    setTimeout(updateCount, 500);
+    setTextParticles(sequence[0]);
+    setTimeout(updateCount, 700);
   </script>
 </body>
 </html>
