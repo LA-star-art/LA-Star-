@@ -1,0 +1,37 @@
+{
+  "name": "adams-batch-analyzer",
+  "version": "0.1.0+codex.20260529125824",
+  "description": "Run generic ADAMS batch simulations, export results, and generate plots and summaries.",
+  "author": {
+    "name": "LA-star-art",
+    "url": "https://github.com/LA-star-art/LA-Star-"
+  },
+  "homepage": "https://github.com/LA-star-art/LA-Star-",
+  "repository": "https://github.com/LA-star-art/LA-Star-",
+  "license": "MIT",
+  "keywords": [
+    "adams",
+    "simulation",
+    "batch",
+    "mechanical-system",
+    "post-processing"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Adams Batch Analyzer",
+    "shortDescription": "Automate ADAMS batch simulation and result analysis.",
+    "longDescription": "Run ADAMS solver jobs from Codex, extract RES data to CSV, generate configurable plots, and write a summary report for generic mechanical-system models.",
+    "developerName": "LA-star-art",
+    "category": "Productivity",
+    "capabilities": [
+      "Write",
+      "Analyze",
+      "Interactive"
+    ],
+    "defaultPrompt": [
+      "Run an ADAMS batch simulation for this .adm model.",
+      "Extract selected channels from these ADAMS results.",
+      "Generate ADAMS result plots and a summary report."
+    ]
+  }
+}

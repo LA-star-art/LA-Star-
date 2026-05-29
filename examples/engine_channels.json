@@ -1,0 +1,48 @@
+{
+  "channels": [
+    {
+      "name": "main_support_force_mag",
+      "type": "vector_magnitude",
+      "entity": "a_2",
+      "components": ["FX", "FY", "FZ"]
+    },
+    {
+      "name": "joint32_force_mag",
+      "type": "vector_magnitude",
+      "entity": "JOINT_32",
+      "components": ["FX", "FY", "FZ"]
+    },
+    {
+      "name": "joint35_force_mag",
+      "type": "vector_magnitude",
+      "entity": "JOINT_35",
+      "components": ["FX", "FY", "FZ"]
+    },
+    {
+      "name": "driver_torque_tz",
+      "type": "component",
+      "entity": "MOTION_1",
+      "component": "TZ"
+    }
+  ],
+  "plots": [
+    {
+      "title": "Main Support Force Curve",
+      "output": "main_support_force_curve.png",
+      "series": ["main_support_force_mag"],
+      "y_label": "Force (N)"
+    },
+    {
+      "title": "Key Joint Force Curves",
+      "output": "key_joint_force_curves.png",
+      "series": ["joint32_force_mag", "joint35_force_mag"],
+      "y_label": "Force (N)"
+    },
+    {
+      "title": "Driver Torque Curve",
+      "output": "driver_torque_curve.png",
+      "series": ["driver_torque_tz"],
+      "y_label": "Torque (N*m)"
+    }
+  ]
+}
