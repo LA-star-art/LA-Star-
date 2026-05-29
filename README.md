@@ -81,6 +81,7 @@ The repository also includes:
 
 - [examples/generic_channels.json](./examples/generic_channels.json)
 - [examples/engine_channels.json](./examples/engine_channels.json)
+- [QUICKSTART.md](./QUICKSTART.md)
 
 ## Output files
 
@@ -153,3 +154,4 @@ If you plan to continue development or publish improvements, see:
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [CHANGELOG.md](./CHANGELOG.md)
 - [OPEN_SOURCE_CHECKLIST.md](./OPEN_SOURCE_CHECKLIST.md)
+- [QUICKSTART.md](./QUICKSTART.md)

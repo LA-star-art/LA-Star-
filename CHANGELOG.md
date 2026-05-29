@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+- normalized release version for repository publishing
+- added quickstart guide
+- added `.gitattributes` for consistent line endings
+- refined README links for repository visitors
+
 ## 0.1.0+codex.20260529125824
 
 - Created first usable Codex plugin scaffold

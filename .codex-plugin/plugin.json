@@ -1,6 +1,6 @@
 {
   "name": "adams-batch-analyzer",
-  "version": "0.1.0+codex.20260529125824",
+  "version": "0.1.1",
   "description": "Run generic ADAMS batch simulations, export results, and generate plots and summaries.",
   "author": {
     "name": "LA-star-art",
